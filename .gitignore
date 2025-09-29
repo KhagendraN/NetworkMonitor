@@ -1,8 +1,13 @@
 # Compiled executables
 arp_scan
+arp_test
 maclookup
 sniffer
 dns_parser
+dns_monitor
+network_monitor
+test_dns_parser
+test_logger
 log_writer
 test
 
@@ -62,9 +67,10 @@ CMakeCache.txt
 CMakeFiles/
 CMakeScripts/
 cmake_install.cmake
-Makefile
 *.cmake
 !CMakeLists.txt
+
+# Note: Makefile is tracked (custom build system)
 
 # Package files
 *.tar.gz
@@ -77,3 +83,47 @@ Makefile
 *.backup
 *.tmp
 *.temp
+
+# Additional compiled files
+*.elf
+*.map
+*.exp
+*.ilk
+
+# GDB and debugging
+.gdb_history
+*.valgrind
+vgcore.*
+
+# Static analysis
+cppcheck_output.xml
+scan-build-*
+
+# Test outputs and captures
+test_results/
+coverage/
+capture_*.pcap
+*.out
+
+# Autotools
+/Makefile.in
+/aclocal.m4
+/compile
+/configure
+/depcomp
+/install-sh
+/missing
+/stamp-h1
+/config.h.in
+/autom4te.cache
+
+# Documentation
+docs/_build/
+*.pdf
+*.ps
+*.dvi
+
+# Local configuration
+local_config.h
+.env
+.env.local
