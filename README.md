@@ -1,43 +1,104 @@
-# NetworkMonitor
+# 🌐 NetworkMonitor
 
-A network monitoring and discovery tool for local network analysis.
+**A comprehensive C++ network monitoring system that tracks devices and their activities on local networks.**
 
-## Features
+## ✨ Features
 
-### ARP Scanner ✅ (Implemented)
-- **Network Device Discovery**: Scans local network (192.168.x.x/24) to find active devices
-- **MAC Address Vendor Lookup**: Identifies device manufacturers using OUI database (37,524+ entries)
-- **Hostname Resolution**: Attempts to resolve device hostnames
-- **Real-time Results**: Shows discovered devices with IP, MAC, vendor, and hostname information
-
-### Planned Features (Coming Soon)
-- DNS Traffic Monitoring
-- Network Usage Logging
-- Web Domain Tracking
-- Traffic Analysis Dashboard
-
-## Current Implementation
-
-### ARP Scanner (`arp_scan.cpp`)
-The ARP scanner discovers devices on your local network by sending ARP requests and analyzing responses.
-
-**Key Features:**
-- Uses raw sockets for ARP packet crafting
-- Integrates with comprehensive OUI.csv database for vendor identification
-- Non-blocking timeout mechanism (3-second scan duration)
-- Detailed error reporting and debugging information
-- Gateway connectivity testing
-
-## Files
-- `arp_scan.cpp`: Network device discovery using ARP protocol
-- `oui.csv`: MAC address vendor database (37,524+ entries)
-- `dns_parser.cpp`: DNS packet parsing (planned)
-- `log_writer.cpp`: Network activity logging (planned)
-- `sniffer.cpp`: General packet capture (planned)
+🔍 **Device Discovery** - ARP scanning with MAC vendor identification  
+📊 **Traffic Monitoring** - Real-time packet capture and analysis  
+🌐 **Website Tracking** - DNS monitoring and visited sites detection  
+📈 **Activity Reports** - Per-device activity summaries with timestamps  
 
 ## 📸 Screenshot
 
-![ARP Scanner Output](assets/Screenshot_16-Jun_19-23-49_32412.png)
+![ARP Scanner Output](assets/output.gif)
+
+## 🚀 Quick Start
+
+### Build
+```bash
+# Using Makefile (recommended)
+make
+
+# Or manually
+g++ -std=c++17 -Wall -Wextra network_monitor.cpp network_tracker.cpp arp_scanner.cpp log_writer.cpp dns_parser.cpp -lpcap -pthread -o network_monitor
+```
+
+### Run
+```bash
+sudo ./network_monitor --debug
+```
+
+## 📊 Sample Output
+
+```
+IP Address     MAC Address       Vendor              Hostname       Status    Packets   DNS Queries Visited Sites       
+----------------------------------------------------------------------------------------------------------------------------------
+192.168.1.11   94:bb:43:de:d6:36 AzureWave Technolog archlinux      Active    506       29          amazon.com,face...  
+192.168.1.5    fc:19:99:c8:b7:9e Xiaomi Communicatio xiaomi-phone   Active    124       15          youtube.com,goo...  
+```
+
+## �️ Requirements
+
+- **Linux** (tested on Arch Linux)
+- **libpcap** development libraries
+- **C++17** compiler (g++/clang++)
+- **Root privileges** (for packet capture)
+
+## 📋 Command Line Options
+
+```bash
+sudo ./network_monitor [options]
+  -d, --debug          Enable debug logging
+  -i, --interface      Specify network interface
+  -t, --time          Set monitoring duration (seconds)
+  -q, --quick         Quick 60-second scan
+  -h, --help          Show help message
+```
+
+## 🎯 How It Works
+
+1. **ARP Scanning** discovers devices on the local network
+2. **Packet Capture** monitors all network traffic in real-time  
+3. **Service Detection** identifies popular websites by IP ranges
+4. **Activity Tracking** associates traffic with specific devices
+5. **Real-time Reports** show live device activity and visited sites
+
+---
+**Built with ❤️ using modern C++17, libpcap, and multithreading**
+- Continuous ARP-based device discovery
+- Device state tracking (active/inactive with timeouts)
+- MAC vendor lookup integration
+- Device activity counters
+
+**Traffic Analysis:**
+- Real-time packet capture and analysis
+- Device-traffic association by IP/MAC matching
+- Protocol-specific handling (TCP, UDP, DNS, ICMP)
+- Activity event logging with timestamps
+
+**DNS Integration:**  
+- DNS packet parsing and domain extraction
+- Per-device domain tracking
+- Query-response correlation
+- Website visit history per device
+
+### 🔧 **Supporting Components**
+
+**ARP Scanner** (`arp_scan.cpp`) - Standalone device discovery tool
+**DNS Parser** (`dns_parser.cpp`) - DNS packet analysis engine  
+**Logger System** (`log_writer.cpp`) - Structured logging with color coding
+**Network Monitor** (`network_monitor.cpp`) - Main application interface
+
+## Files
+- `network_tracker.cpp/h`: **Core comprehensive monitoring system** ✅
+- `network_monitor.cpp`: **Main application interface** ✅
+- `arp_scan.cpp`: Standalone ARP network scanner ✅
+- `dns_parser.cpp/h`: DNS packet parsing engine ✅
+- `dns_monitor.cpp`: Standalone DNS traffic monitor ✅
+- `log_writer.cpp/h`: Structured logging with color coding ✅
+- `oui.csv`: MAC address vendor database (37,524+ entries)
+- `test_dns_parser.cpp`: DNS parser unit tests ✅
 
 ## Prerequisites
 
@@ -57,57 +118,107 @@ sudo apt-get install libpcap-dev g++
 sudo dnf install libpcap-devel gcc-c++
 ```
 
-2. Compile the ARP scanner:
+2. Compile the applications:
 ```bash
-g++ -o arp_scan arp_scan.cpp -lpcap -std=c++17
+# Main Comprehensive Network Monitor
+g++ -o network_monitor network_monitor.cpp network_tracker.cpp dns_parser.cpp log_writer.cpp -lpcap -std=c++17
+
+# Standalone Tools (optional)
+g++ -o arp_scan arp_scan.cpp log_writer.cpp -lpcap -std=c++17
+g++ -o dns_monitor dns_monitor.cpp dns_parser.cpp log_writer.cpp -lpcap -std=c++17
 ```
 
 ## Usage
 
-### ARP Network Scanner
+### 🚀 **Comprehensive Network Monitoring** (Recommended)
 
-Run the ARP scanner to discover devices on your local network:
+**Continuous monitoring** - tracks devices and their activities over time:
 
 ```bash
-sudo ./arp_scan
+# Start continuous monitoring (Press Ctrl+C to generate reports)
+sudo ./network_monitor
+
+# Quick 60-second scan
+sudo ./network_monitor --quick
+
+# Monitor for specific duration (5 minutes)
+sudo ./network_monitor --time 300
+
+# Use specific network interface
+sudo ./network_monitor --interface eth0
 ```
 
 **Sample Output:**
 ```
-Loading MAC vendor database...
-Loaded 37524 MAC vendor entries from oui.csv
-Using interface: wlan0
-Source MAC: 94:BB:43:DE:D6:36
-Source IP: 192.168.254.11
-Testing connectivity to gateway: 192.168.254.1
-ARP request sent to gateway successfully
-Gateway responded! Network is working.
-Sending ARP requests to 254 addresses...
-Sent 254 ARP requests successfully, 0 failed.
-Listening for replies for 3 seconds...
+🚀 NetworkMonitor v2.0 - Comprehensive Network Monitoring
+🔍 Starting Comprehensive Network Monitoring
+📡 Interface: wlan0
+🎯 Objective: Track devices and monitor their network activity
 
-Device found:
-  IP       : 192.168.254.1
-  MAC      : AA:BB:CC:DD:EE:FF
-  Hostname : router.local
-  Vendor   : Cisco Systems
---------------------------------------
-Scan complete. Found 1 devices.
+This system will:
+  ✓ Discover devices via ARP scanning
+  ✓ Track device activity and traffic patterns
+  ✓ Monitor DNS queries to see websites visited
+  ✓ Associate all network activity with specific devices
+  ✓ Generate per-device activity reports
+
+📊 Monitoring active - Press Ctrl+C to stop and generate reports
+
+=== Live Status Update ===
+Active devices: 5
+Total devices seen: 8
+Most active devices:
+  192.168.1.100 (Apple) - 1,247 packets, 89 DNS queries
+  192.168.1.101 (Samsung) - 892 packets, 45 DNS queries
+  192.168.1.1 (Cisco Systems) - 234 packets, 12 DNS queries
+
+=== Final Device Summary ===
+IP Address      MAC Address       Vendor              Status    Packets   Last Seen
+192.168.1.100   12:34:56:78:9A    Apple               Active    1,247     14:23:45
+192.168.1.101   AB:CD:EF:12:34    Samsung             Active    892       14:23:42
+192.168.1.1     AA:BB:CC:DD:EE    Cisco Systems       Active    234       14:23:40
+
+=== Per-Device Domain Access ===
+Device: 192.168.1.100 (Apple iPhone)
+Domains accessed: 23
+  • google.com
+  • apple.com  
+  • icloud.com
+  • facebook.com
+  • youtube.com
+```
+
+### 📡 **Standalone Tools** (For specific tasks)
+
+**ARP Scanner** - Device discovery only:
+```bash
+sudo ./arp_scan
+```
+
+**DNS Monitor** - DNS traffic only:
+```bash  
+sudo ./dns_monitor [interface]
+```
+
+**Sample ARP Scanner Output:**
+```
+[STATUS] NetworkMonitor ARP Scanner Starting...
+[INFO] Loaded 37524 MAC vendor entries from oui.csv
+[INFO] Using interface: wlan0
+[STATUS] Device discovered: 192.168.1.1 (AA:BB:CC:DD:EE:FF) - Cisco Systems
+[STATUS] Device discovered: 192.168.1.100 (12:34:56:78:9A:BC) - Apple
+[STATUS] Scan complete. Found 5 devices.
 ```
 
 ## Technical Details
 
-### ARP Scanner Implementation
-- **Protocol**: Uses ARP (Address Resolution Protocol) for device discovery
-- **Scope**: Scans entire /24 subnet (254 addresses)
-- **Database**: Loads MAC vendor information from IEEE OUI registry
-- **Performance**: 2ms delay between requests to avoid network flooding
-- **Timeout**: 3-second listening window for responses
+### Comprehensive System Implementation
+- **Device Discovery**: Continuous ARP scanning every 5 minutes
+- **Traffic Monitoring**: Real-time packet capture with device association
+- **DNS Analysis**: Query parsing and domain tracking per device  
+- **Data Persistence**: Activity logging with configurable retention
+- **Live Reporting**: Real-time status updates and final comprehensive reports
 
-### Network Interface Detection
-- Automatically uses `wlan0` interface (configurable)
-- Validates interface availability and permissions
-- Extracts source MAC and IP for ARP requests
 
 ## Troubleshooting
 
@@ -127,13 +238,6 @@ Scan complete. Found 1 devices.
    - Check available interfaces: `ip addr show`
    - Modify interface name in code if needed
 
-## Development Status
-
-- ✅ **ARP Scanner**: Fully implemented and functional
-- 🔄 **DNS Monitor**: Planned for next iteration
-- 🔄 **Web Usage Tracker**: Future enhancement
-- 🔄 **Traffic Logger**: Future enhancement
-
 ## Contributing
 
 This project is under active development. Feel free to contribute by:
@@ -144,4 +248,4 @@ This project is under active development. Feel free to contribute by:
 
 ---
 
-*Last Updated: September 27, 2025*
+*Last Updated: September 29, 2025*
