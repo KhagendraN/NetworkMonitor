@@ -1,4 +1,5 @@
 # NetworkMonitor Makefile
+
 # Compiler settings
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -g
@@ -7,9 +8,10 @@ DEBUG_FLAGS = -DDEBUG
 
 # Source files
 MONITOR_SOURCES = network_monitor.cpp network_tracker.cpp arp_scanner.cpp dns_parser.cpp log_writer.cpp
-
-# Target executable
+DNS_SOURCES = dns_parser.cpp dns_parser.h  # add any other needed files here
 TARGET = network_monitor
+TARGETS = network_monitor arp_scan dns_monitor
+MAIN_TARGET = network_monitor
 
 # Default target
 all: $(TARGET)
@@ -23,37 +25,7 @@ $(TARGET): $(MONITOR_SOURCES)
 # Debug build
 debug: CXXFLAGS += $(DEBUG_FLAGS)
 debug: $(TARGET)
-
-# Clean build artifacts
-clean:
-	@echo "Cleaning build artifacts..."
-	rm -f $(TARGET)
-	@echo "✅ Clean complete"
-
-# Install dependencies (Ubuntu/Debian)
-install-deps:
-	@echo "Installing dependencies..."
-	sudo apt-get update
-	sudo apt-get install libpcap-dev g++
-
-# Help
-help:
-	@echo "NetworkMonitor Build System"
-	@echo ""
-	@echo "Targets:"
-	@echo "  all (default) - Build network_monitor"
-	@echo "  debug         - Build with debug symbols"
-	@echo "  clean         - Remove build artifacts"
-	@echo "  install-deps  - Install dependencies (Ubuntu/Debian)"
-	@echo "  help          - Show this help"
-	@echo ""
-	@echo "Usage:"
-	@echo "  make          # Build the application"
-	@echo "  make clean    # Clean build files"
-	@echo "  make debug    # Build with debugging enabled"
-
-.PHONY: all debug clean install-deps help
-	@echo "✅ arp_scan built successfully"
+	@echo "🐛 Debug build completed"
 
 # Standalone DNS monitor
 dns_monitor: $(DNS_SOURCES)
@@ -73,15 +45,17 @@ build-all: $(TARGETS)
 	@echo "Usage: sudo ./network_monitor --help"
 
 # Debug builds
-debug: CXXFLAGS += $(DEBUG_FLAGS)
-debug: $(MAIN_TARGET)
-	@echo "🐛 Debug build completed"
-
 debug-all: CXXFLAGS += $(DEBUG_FLAGS)
 debug-all: $(TARGETS)
 	@echo "🐛 All debug builds completed"
 
-# Installation (copy to /usr/local/bin)
+# Install dependencies (Ubuntu/Debian)
+install-deps:
+	@echo "Installing dependencies..."
+	sudo apt-get update
+	sudo apt-get install libpcap-dev g++
+
+# Install main executable
 install: $(MAIN_TARGET)
 	@echo "Installing NetworkMonitor..."
 	sudo cp network_monitor /usr/local/bin/
@@ -89,6 +63,7 @@ install: $(MAIN_TARGET)
 	@echo "✅ NetworkMonitor installed to /usr/local/bin/"
 	@echo "You can now run: sudo network_monitor"
 
+# Install all executables
 install-all: $(TARGETS)
 	@echo "Installing all NetworkMonitor tools..."
 	sudo cp network_monitor /usr/local/bin/
@@ -99,7 +74,7 @@ install-all: $(TARGETS)
 	sudo chmod +x /usr/local/bin/dns_monitor
 	@echo "✅ All tools installed to /usr/local/bin/"
 
-# Uninstall
+# Uninstall all tools
 uninstall:
 	@echo "Uninstalling NetworkMonitor..."
 	sudo rm -f /usr/local/bin/network_monitor
@@ -107,14 +82,14 @@ uninstall:
 	sudo rm -f /usr/local/bin/dns_monitor
 	@echo "✅ NetworkMonitor uninstalled"
 
-# Clean compiled files
+# Clean build artifacts and compiled files
 clean:
-	@echo "Cleaning compiled files..."
-	rm -f $(TARGETS)
-	rm -f *.o
+	@echo "Cleaning build artifacts and compiled files..."
+	rm -f $(TARGETS) $(TARGET) *.o
+	rm -f *~ *.bak *.tmp core core.*
 	@echo "✅ Clean completed"
 
-# Clean everything including backup files
+# Deep clean (remove backups, core files)
 distclean: clean
 	@echo "Deep cleaning..."
 	rm -f *~ *.bak *.tmp
