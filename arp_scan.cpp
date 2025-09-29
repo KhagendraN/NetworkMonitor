@@ -20,6 +20,7 @@
 #include <signal.h>
 #include <chrono>
 #include <thread>
+#include "log_writer.h"
 
 
 // ARP packet structure
@@ -38,7 +39,7 @@ volatile bool scan_complete = false;
 void load_oui_data() {
     std::ifstream file("oui.csv");
     if (!file.is_open()) {
-        std::cout << "Warning: Could not open oui.csv file. Using built-in vendor data.\n";
+        Logger::Warning("Could not open oui.csv file. Using built-in vendor data.");
         // Fallback to hardcoded data
         mac_vendor_map["F81A67"] = "Xiaomi";
         mac_vendor_map["842E27"] = "Itel";
@@ -78,7 +79,7 @@ void load_oui_data() {
             }
         }
     }
-    std::cout << "Loaded " << loaded << " MAC vendor entries from oui.csv\n";
+    Logger::Info("Loaded " + std::to_string(loaded) + " MAC vendor entries from oui.csv");
 }
 
 // Get MAC address of interface
@@ -148,7 +149,7 @@ std::string lookup_vendor(const uint8_t* mac) {
 }
 
 // Print ARP reply
-void packet_handler(u_char* args, const struct pcap_pkthdr* header, const u_char* packet) {
+void packet_handler([[maybe_unused]] u_char* args, [[maybe_unused]] const struct pcap_pkthdr* header, const u_char* packet) {
     struct ether_header* eth = (struct ether_header*)packet;
     if (ntohs(eth->ether_type) != ETHERTYPE_ARP) return;
 
@@ -169,6 +170,18 @@ void packet_handler(u_char* args, const struct pcap_pkthdr* header, const u_char
 
     std::string vendor = lookup_vendor(arp->arp_sha);
 
+    // Create device info string
+    char mac_str[18];
+    snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X",
+             arp->arp_sha[0], arp->arp_sha[1], arp->arp_sha[2],
+             arp->arp_sha[3], arp->arp_sha[4], arp->arp_sha[5]);
+             
+    std::string device_info = "Device discovered - IP: " + std::string(ip) + 
+                              ", MAC: " + std::string(mac_str);
+
+    Logger::Status(device_info);
+    
+    // Detailed device information with formatting
     printf("Device found:\n");
     printf("  IP       : %s\n", ip);
     printf("  MAC      : %02X:%02X:%02X:%02X:%02X:%02X\n",
@@ -178,75 +191,89 @@ void packet_handler(u_char* args, const struct pcap_pkthdr* header, const u_char
     printf("  Vendor   : %s\n", vendor.c_str());
     printf("--------------------------------------\n");
     
+    // Log device details
+    std::string device_details = "Hostname: " + std::string(hostname) + ", Vendor: " + vendor;
+    Logger::Info(device_details);
+    
     // Increment counter for found devices
     (*(int*)args)++;
 }
 
 int main() {
+    // Initialize logger
+    Logger::Init(LogLevel::DEBUG);
+    Logger::Status("NetworkMonitor ARP Scanner Starting...");
+    
     const char* iface = "wlan0"; // You can change this to your interface name
 
-    std::cout << "Loading MAC vendor database...\n";
+    Logger::Info("Loading MAC vendor database...");
     load_oui_data();
 
     // Get source MAC & IP
     uint8_t src_mac[6];
     in_addr src_ip;
     if (!get_mac_address(iface, src_mac) || !get_ip_address(iface, &src_ip)) {
-        std::cerr << "Failed to get MAC or IP of interface " << iface << std::endl;
-        std::cerr << "Make sure the interface exists and you have proper permissions.\n";
+        Logger::Error("Failed to get MAC or IP of interface " + std::string(iface));
+        Logger::Error("Make sure the interface exists and you have proper permissions.");
         return 1;
     }
 
-    printf("Using interface: %s\n", iface);
-    printf("Source MAC: %02X:%02X:%02X:%02X:%02X:%02X\n", 
-           src_mac[0], src_mac[1], src_mac[2], src_mac[3], src_mac[4], src_mac[5]);
-    printf("Source IP: %s\n", inet_ntoa(src_ip));
+    char mac_str[18];
+    snprintf(mac_str, sizeof(mac_str), "%02X:%02X:%02X:%02X:%02X:%02X", 
+             src_mac[0], src_mac[1], src_mac[2], src_mac[3], src_mac[4], src_mac[5]);
+    
+    Logger::Info("Using interface: " + std::string(iface));
+    Logger::Info("Source MAC: " + std::string(mac_str));
+    Logger::Info("Source IP: " + std::string(inet_ntoa(src_ip)));
 
     // Open raw socket for sending ARP
     int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
     if (sock < 0) {
-        perror("socket creation failed");
-        std::cerr << "Make sure you're running as root or with CAP_NET_RAW capability.\n";
+        Logger::Error("Socket creation failed - " + std::string(strerror(errno)));
+        Logger::Error("Make sure you're running as root or with CAP_NET_RAW capability.");
         return 1;
     }
+    Logger::Debug("Raw socket created successfully");
 
     // Start pcap for listening
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap_t* handle = pcap_open_live(iface, BUFSIZ, 0, 100, errbuf);  // Reduced timeout to 100ms
     if (!handle) {
-        std::cerr << "pcap_open_live failed: " << errbuf << std::endl;
+        Logger::Error("pcap_open_live failed: " + std::string(errbuf));
         close(sock);
         return 1;
     }
+    Logger::Debug("pcap handle created successfully");
 
     struct bpf_program fp;
     if (pcap_compile(handle, &fp, "arp", 0, PCAP_NETMASK_UNKNOWN) < 0) {
-        std::cerr << "pcap_compile failed: " << pcap_geterr(handle) << std::endl;
+        Logger::Error("pcap_compile failed: " + std::string(pcap_geterr(handle)));
         pcap_close(handle);
         close(sock);
         return 1;
     }
     
     if (pcap_setfilter(handle, &fp) < 0) {
-        std::cerr << "pcap_setfilter failed: " << pcap_geterr(handle) << std::endl;
+        Logger::Error("pcap_setfilter failed: " + std::string(pcap_geterr(handle)));
         pcap_freecode(&fp);
         pcap_close(handle);
         close(sock);
         return 1;
     }
     pcap_freecode(&fp);
+    Logger::Debug("ARP packet filter applied successfully");
 
-    std::cout << "Scanning your network... Please wait.\n";
+    Logger::Status("Scanning your network...");
     
     // First, try to ping the gateway to populate ARP table
     in_addr gateway_ip = src_ip;
     ((uint8_t*)&gateway_ip.s_addr)[3] = 1;
-    printf("Testing connectivity to gateway: %s\n", inet_ntoa(gateway_ip));
+    Logger::Info("Testing connectivity to gateway: " + std::string(inet_ntoa(gateway_ip)));
     
     if (!send_arp_request(sock, iface, src_mac, src_ip, gateway_ip)) {
-        std::cerr << "Failed to send ARP request to gateway\n";
+        Logger::Error("Failed to send ARP request to gateway");
     } else {
-        printf("ARP request sent to gateway successfully\n");
+        Logger::Debug("ARP request sent to gateway successfully");
         
         // Wait a bit and listen for response
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -254,13 +281,13 @@ int main() {
         pcap_dispatch(handle, 5, packet_handler, (u_char*)&test_devices);
         
         if (test_devices > 0) {
-            printf("Gateway responded! Network is working.\n");
+            Logger::Info("Gateway responded! Network is working.");
         } else {
-            printf("No response from gateway. This might indicate network issues.\n");
+            Logger::Warning("No response from gateway. This might indicate network issues.");
         }
     }
 
-    std::cout << "Sending ARP requests to 254 addresses...\n";
+    Logger::Status("Sending ARP requests to 254 addresses...");
 
     // Send ARP to all addresses in /24 subnet
     int sent_requests = 0;
@@ -276,8 +303,9 @@ int main() {
         usleep(2000);  // Smaller delay
     }
     
-    printf("Sent %d ARP requests successfully, %d failed.\n", sent_requests, failed_requests);
-    printf("Listening for replies for 3 seconds...\n");
+    Logger::Info("Sent " + std::to_string(sent_requests) + " ARP requests successfully, " + 
+                 std::to_string(failed_requests) + " failed.");
+    Logger::Status("Listening for replies for 3 seconds...");
 
     // Listen for replies with timeout
     int found_devices = 0;
@@ -287,40 +315,41 @@ int main() {
     while (std::chrono::steady_clock::now() - start_time < timeout_duration) {
         int result = pcap_dispatch(handle, 10, packet_handler, (u_char*)&found_devices);
         if (result < 0) {
-            std::cerr << "pcap_dispatch failed: " << pcap_geterr(handle) << std::endl;
+            Logger::Error("pcap_dispatch failed: " + std::string(pcap_geterr(handle)));
             break;
         }
         if (result > 0) {
-            printf("Processed %d packets\n", result);
+            Logger::Debug("Processed " + std::to_string(result) + " packets");
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
     
     if (found_devices == 0) {
-        std::cout << "No devices found. This could mean:\n";
-        std::cout << "1. No other devices are on the network\n";
-        std::cout << "2. Firewall is blocking ARP responses\n";
-        std::cout << "3. Network interface issues\n";
-        std::cout << "4. Permission issues\n";
-        std::cout << "\nTrying to scan the gateway to verify connectivity...\n";
+        Logger::Warning("No devices found. This could mean:");
+        Logger::Info("1. No other devices are on the network");
+        Logger::Info("2. Firewall is blocking ARP responses");
+        Logger::Info("3. Network interface issues");
+        Logger::Info("4. Permission issues");
+        Logger::Status("Trying to scan the gateway to verify connectivity...");
         
         // Try scanning the gateway (usually .1)
         in_addr gateway_ip = src_ip;
         ((uint8_t*)&gateway_ip.s_addr)[3] = 1;
         send_arp_request(sock, iface, src_mac, src_ip, gateway_ip);
         
-        printf("Sent ARP request to gateway: %s\n", inet_ntoa(gateway_ip));
+        Logger::Info("Sent ARP request to gateway: " + std::string(inet_ntoa(gateway_ip)));
         std::this_thread::sleep_for(std::chrono::seconds(1));
         pcap_dispatch(handle, 1, packet_handler, (u_char*)&found_devices);
         
         if (found_devices == 0) {
-            std::cout << "No response from gateway either. Check your network configuration.\n";
+            Logger::Error("No response from gateway either. Check your network configuration.");
         }
     } else {
-        printf("Scan complete. Found %d devices.\n", found_devices);
+        Logger::Status("Scan complete. Found " + std::to_string(found_devices) + " devices.");
     }
 
     pcap_close(handle);
     close(sock);
+    Logger::Status("NetworkMonitor ARP Scanner finished.");
     return 0;
 }
